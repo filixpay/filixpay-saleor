@@ -1,0 +1,43 @@
+fragment TransactionInitializeSessionEvent on TransactionInitializeSession {
+  ...BasicWebhookMetadata
+  __typename
+  recipient {
+    ...PaymentGatewayRecipient
+  }
+  idempotencyKey
+  data
+  merchantReference
+  action {
+    amount
+    currency
+    actionType
+  }
+  issuingPrincipal {
+    ... on Node {
+      id
+    }
+  }
+  transaction {
+    ...SyncWebhookTransaction
+  }
+  sourceObject {
+    ... on Checkout {
+      token
+      email
+      billingAddress {
+        country {
+          code
+        }
+      }
+      lines {
+        quantity
+        variant {
+          id
+          product {
+            id
+          }
+        }
+      }
+    }
+  }
+}

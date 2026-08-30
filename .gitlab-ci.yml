@@ -1,0 +1,51 @@
+# Build and push Docker image when application code changes (not docs-only commits).
+
+stages:
+  - package
+
+variables:
+  DOCKER_TLS_CERTDIR: "/certs"
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+  IMAGE_REF: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+
+cache: []
+
+package:
+  stage: package
+  image: docker:27-cli
+  services:
+    - docker:27-dind
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH
+      changes:
+        - Dockerfile
+        - Dockerfile.dev
+        - docker-compose.yml
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - src/**/*
+        - public/**/*
+        - graphql/**/*
+        - generated/**/*
+        - scripts/**/*
+        - patches/**/*
+        - next.config.js
+        - tsconfig.json
+        - vitest.config.ts
+        - sentry.*.config.ts
+        - .graphqlrc.yml
+        - deploy.sh
+  before_script:
+    - docker info
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - docker build --no-cache --pull -t "$IMAGE_TAG" -t "$IMAGE_REF" .
+    - docker push "$IMAGE_TAG"
+    - docker push "$IMAGE_REF"
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
+        docker tag "$IMAGE_TAG" "$CI_REGISTRY_IMAGE:latest"
+        docker push "$CI_REGISTRY_IMAGE:latest"
+      fi

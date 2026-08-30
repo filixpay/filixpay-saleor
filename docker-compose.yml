@@ -1,0 +1,15 @@
+services:
+  filixpay-saleor:
+    build: .
+    image: filixpay-saleor:latest
+    container_name: filixpay-saleor
+    restart: always
+    ports:
+      - "127.0.0.1:3001:3001"
+    env_file:
+      - .env
+    volumes:
+      - filixpay-saleor-data:/data
+
+volumes:
+  filixpay-saleor-data:

@@ -1,0 +1,12 @@
+blockExoticSubdeps: true
+minimumReleaseAge: 1440 # 24h
+
+onlyBuiltDependencies:
+  - '@sentry/cli'
+  - esbuild
+  - protobufjs
+
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  # Only version >= 7.x have trusted publishing & provenance
+  - "semver@6.3.1"
