@@ -5,6 +5,8 @@ import { createClient } from "@/lib/create-graphql-client";
 import { createLogger } from "@/lib/logger/create-logger";
 import { getTransactionActions } from "@/lib/transaction-actions";
 import { AppUrlGenerator } from "@/modules/url/app-url-generator";
+import { patchFilixPaySaleorOrderMetadata } from "@/modules/filixpay/client";
+import { resolveSaleorMetadataPatchTarget } from "@/modules/filixpay/saleor-metadata-patch";
 import {
   TransactionDetailsViaPspDocument,
   TransactionDetailsViaTokenDocument,
@@ -126,6 +128,40 @@ async function reportSaleorTransactionEvent(params: {
   return result.data?.transactionEventReport;
 }
 
+/**
+ * Direct FilixPay API call (not another webhook) — enrich order with Saleor order id.
+ * Best-effort: failures are logged and do not fail the notify response.
+ */
+async function patchFilixPayOrderSaleorMetadata(
+  transaction: TransactionFragment,
+  logger: ReturnType<typeof createLogger>
+) {
+  const target = resolveSaleorMetadataPatchTarget({
+    pspReference: transaction.pspReference,
+    saleorOrderId: transaction.order?.id,
+    saleorOrderNumber: transaction.order?.number,
+  });
+
+  if (!target) {
+    logger.warn("Skipping FilixPay saleor-metadata patch — missing FilixPay order UUID or Saleor order id", {
+      pspReference: transaction.pspReference,
+      saleorOrderId: transaction.order?.id,
+    });
+    return;
+  }
+
+  try {
+    await patchFilixPaySaleorOrderMetadata(target);
+    logger.info("Patched FilixPay order with Saleor order metadata", target);
+  } catch (err) {
+    logger.error("Failed to patch FilixPay saleor-metadata (non-fatal)", {
+      ...target,
+      errorName: err instanceof Error ? err.name : undefined,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
 export default async function filixPayNotifyHandler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -175,6 +211,10 @@ export default async function filixPayNotifyHandler(
       pspReference: notification.data.tradeNo,
       message: `FilixPay ${notification.eventType} ${notification.eventId}`,
     });
+
+    if (eventType === TransactionEventTypeEnum.ChargeSuccess) {
+      await patchFilixPayOrderSaleorMetadata(saleorTransaction.transaction, logger);
+    }
 
     logger.info("Processed FilixPay notification", {
       eventId: notification.eventId,

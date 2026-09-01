@@ -75,7 +75,7 @@ function mapCheckoutLines(
 
 /**
  * Maps Saleor TRANSACTION_INITIALIZE_SESSION payload to FilixPay commerce checkout input.
- * Returns null when sourceObject is not a Checkout (legacy /orders fallback path).
+ * Returns null when sourceObject is not a Checkout — callers must fail closed (no legacy /orders).
  */
 export function extractCommercePaymentSessionInput(
   payload: TransactionInitializeSessionEventFragment

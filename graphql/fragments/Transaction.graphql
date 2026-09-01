@@ -40,5 +40,6 @@ fragment Transaction on TransactionItem {
   }
   order {
     id
+    number
   }
 }

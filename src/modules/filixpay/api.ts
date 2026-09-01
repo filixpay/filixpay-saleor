@@ -8,8 +8,13 @@ export {
   getFilixPayAccessToken,
   getFilixPayConfig,
   getFilixPayPaymentToken,
+  patchFilixPaySaleorOrderMetadata,
 } from "./client";
 export { extractCommercePaymentSessionInput } from "./commerce-session";
+export {
+  isFilixPayOrderUuid,
+  resolveSaleorMetadataPatchTarget,
+} from "./saleor-metadata-patch";
 export type {
   FilixPayAccessToken,
   FilixPayCheckoutResult,
@@ -20,8 +25,10 @@ export type {
   FilixPayCreateOrderPayload,
   FilixPayOrderResult,
   FilixPayPaymentTokenResult,
+  FilixPayPatchSaleorOrderMetadataInput,
 } from "./types";
 export type {
   FilixPayCommercePaymentSessionInput,
   FilixPayCommercePaymentSessionLine,
 } from "./commerce-session";
+export type { SaleorMetadataPatchTarget } from "./saleor-metadata-patch";

@@ -9,6 +9,7 @@ import {
   FilixPayCreateOrderPayload,
   FilixPayOrderResult,
   FilixPayPaymentTokenResult,
+  FilixPayPatchSaleorOrderMetadataInput,
 } from "./types";
 import type { FilixPayCommercePaymentSessionInput } from "./commerce-session";
 
@@ -301,6 +302,48 @@ export async function createFilixPayCommercePaymentSession(
       data !== null &&
       (data as Record<string, unknown>).idempotencyReplay === true,
   };
+}
+
+/**
+ * Best-effort enrichment after Saleor order exists — writes saleor_order_id onto FilixPay order metadata.
+ */
+export async function patchFilixPaySaleorOrderMetadata(
+  input: FilixPayPatchSaleorOrderMetadataInput,
+  env: Env = process.env,
+  fetchFn: FetchLike = fetch
+): Promise<void> {
+  const config = getFilixPayConfig(env);
+  const token = await getFilixPayAccessToken(env, fetchFn);
+  const body: Record<string, string> = {
+    saleorOrderId: input.saleorOrderId,
+  };
+  if (input.saleorOrderNumber) {
+    body.saleorOrderNumber = input.saleorOrderNumber;
+  }
+
+  const response = await fetchFn(
+    joinUrl(
+      config.apiBaseUrl,
+      `/commerce/saleor/orders/${encodeURIComponent(input.filixPayOrderId)}/saleor-metadata`
+    ),
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }
+  );
+  const responseBody = await readJsonResponse(response);
+
+  if (!response.ok) {
+    throw new Error(
+      `FilixPay saleor-metadata patch failed with HTTP ${response.status}: ${JSON.stringify(responseBody).slice(0, 500)}`
+    );
+  }
+
+  ensureApiSuccess(responseBody, "FilixPay saleor-metadata patch");
 }
 
 export async function createFilixPayCheckout(

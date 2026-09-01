@@ -1,8 +1,4 @@
-import {
-  buildMerchantOrderId,
-  createFilixPayCheckout,
-  createFilixPayCommercePaymentSession,
-} from "@/modules/filixpay/client";
+import { createFilixPayCommercePaymentSession } from "@/modules/filixpay/client";
 import { extractCommercePaymentSessionInput } from "@/modules/filixpay/commerce-session";
 
 import { SaleorSyncWebhook } from "@saleor/app-sdk/handlers/next";
@@ -43,47 +39,33 @@ export default wrapWithLoggerContext(
 
       try {
         const commerceInput = extractCommercePaymentSessionInput(payload);
-        const merchantOrderId = buildMerchantOrderId(payload.transaction.token);
+        if (!commerceInput) {
+          throw new Error(
+            "FilixPay Saleor checkout requires Checkout sourceObject with product lines; legacy POST /orders is disabled"
+          );
+        }
 
-        const checkout = commerceInput
-          ? await createFilixPayCommercePaymentSession(commerceInput)
-          : await createFilixPayCheckout({
-              merchantOrderId,
-              subject: "Saleor checkout payment",
-              amount,
-              currency: payload.action.currency,
-              returnUrl: payload.data.returnUrl,
-            });
-
-        const filixTradeNo =
-          "orderId" in checkout
-            ? checkout.orderId
-            : checkout.tradeNo || checkout.merchantOrderId;
-        const filixCheckoutUrl =
-          "redirectUrl" in checkout ? checkout.redirectUrl : checkout.payUrl;
+        const checkout = await createFilixPayCommercePaymentSession(commerceInput);
 
         const successResponse: TransactionSessionSuccess = {
-          pspReference: filixTradeNo,
+          pspReference: checkout.orderId,
           result: "CHARGE_ACTION_REQUIRED" as TransactionSessionSuccess["result"],
           message: "Redirect to FilixPay checkout",
           amount,
-          externalUrl: filixCheckoutUrl,
+          externalUrl: checkout.redirectUrl,
           actions: [],
           data: {
-            redirectUrl: filixCheckoutUrl,
-            filixTradeNo,
-            merchantOrderId:
-              "merchantOrderId" in checkout ? checkout.merchantOrderId : merchantOrderId,
-            paymentToken: "paymentToken" in checkout ? checkout.paymentToken : undefined,
-            commerceCheckout: Boolean(commerceInput),
-            idempotencyReplay:
-              "idempotencyReplay" in checkout ? checkout.idempotencyReplay : undefined,
+            redirectUrl: checkout.redirectUrl,
+            filixTradeNo: checkout.orderId,
+            merchantOrderId: checkout.merchantOrderId,
+            commerceCheckout: true,
+            idempotencyReplay: checkout.idempotencyReplay,
           },
         };
 
         logger.info("Returning FilixPay redirect response to Saleor", {
           response: successResponse,
-          commerceCheckout: Boolean(commerceInput),
+          commerceCheckout: true,
         });
 
         return res.status(200).json(successResponse);

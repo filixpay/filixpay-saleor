@@ -80,3 +80,9 @@ export type FilixPayCommercePaymentSessionResult = {
   expiresAt?: string;
   idempotencyReplay: boolean;
 };
+
+export type FilixPayPatchSaleorOrderMetadataInput = {
+  filixPayOrderId: string;
+  saleorOrderId: string;
+  saleorOrderNumber?: string;
+};

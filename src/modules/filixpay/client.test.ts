@@ -8,6 +8,7 @@ import {
   createFilixPayCommercePaymentSession,
   getFilixPayAccessToken,
   getFilixPayPaymentToken,
+  patchFilixPaySaleorOrderMetadata,
 } from "./client";
 
 const TEST_API_BASE_URL = "https://api.example.com/openapi/v1";
@@ -331,6 +332,59 @@ describe("FilixPay client", () => {
           Authorization: "Bearer access-token",
           "Content-Type": "application/json",
         },
+      })
+    );
+  });
+
+  it("patches FilixPay order with Saleor order metadata", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            access_token: "access-token",
+            expires_in: 300,
+          }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            success: true,
+            code: "SUCCESS",
+            data: null,
+            message: "Saleor order metadata updated",
+          }),
+      });
+
+    await expect(
+      patchFilixPaySaleorOrderMetadata(
+        {
+          filixPayOrderId: "00000000-0000-4000-8000-000000000001",
+          saleorOrderId: "T3JkZXI6MQ==",
+          saleorOrderNumber: "1234",
+        },
+        env,
+        fetchMock
+      )
+    ).resolves.toBeUndefined();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      `${TEST_API_BASE_URL}/commerce/saleor/orders/00000000-0000-4000-8000-000000000001/saleor-metadata`,
+      expect.objectContaining({
+        method: "PATCH",
+        headers: {
+          Authorization: "Bearer access-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          saleorOrderId: "T3JkZXI6MQ==",
+          saleorOrderNumber: "1234",
+        }),
       })
     );
   });
