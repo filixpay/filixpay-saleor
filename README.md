@@ -1,32 +1,49 @@
-# FilixPay Saleor Payment App
+# FilixPay Payment Integration for Saleor
 
-Open-source [Saleor](https://saleor.io/) Payment App for [FilixPay](https://www.filixpay.com). It implements Saleor’s Transactions API webhooks and redirects shoppers to FilixPay Checkout for payment.
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/filixpay/filixpay-saleor?style=social)](https://github.com/filixpay/filixpay-saleor/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/filixpay/filixpay-saleor)](https://github.com/filixpay/filixpay-saleor/issues)
 
-本仓库是开源的 Saleor 支付应用（Next.js）。商户自行托管后，Payment App 与 FilixPay 回调运行在**您自己的域名/服务**上；通过环境变量配置 Saleor 与 FilixPay 凭证即可部署。
+Open-source payment integration for Saleor Commerce, connecting Saleor checkout with FilixPay payment infrastructure.
 
-## Documentation | 文档
+Use FilixPay as a payment infrastructure layer for Saleor-based commerce applications.
 
-| Document | Description |
-|----------|-------------|
-| **[docs/integration-guide.md](docs/integration-guide.md)** | **Integration guide** — deploy, Saleor install, FilixPay webhooks, reverse proxy, troubleshooting |
-| [docs/filixpay-order-integration.md](docs/filixpay-order-integration.md) | FilixPay API & implementation details (contributors) |
-| [docs/README.md](docs/README.md) | Documentation index |
+[Website](https://www.filixpay.com) · [Integration guide](docs/integration-guide.md) · [Issues](https://github.com/filixpay/filixpay-saleor/issues)
 
 ## Features
 
-- Saleor sync webhooks: `PAYMENT_GATEWAY_INITIALIZE_SESSION`, `TRANSACTION_INITIALIZE_SESSION`, `TRANSACTION_PROCESS_SESSION`
-- Charge / refund / cancel request webhooks
-- FilixPay OpenAPI: create order, payment token, HMAC-signed notify webhook
-- APL support: file / Upstash / Saleor Cloud
+- Saleor Commerce payment integration
+- Payment checkout integration
+- FilixPay payment infrastructure
+- Global commerce payment flows
+- Secure payment processing
+- TypeScript-based integration
+- Open source (Apache-2.0)
 
-## Prerequisites
+## Architecture
 
-- Node.js 24–26 and [pnpm](https://pnpm.io/) 10+
-- A Saleor instance (3.22 schema)
-- FilixPay merchant credentials (`FILIXPAY_CLIENT_ID` / `FILIXPAY_CLIENT_SECRET`)
-- Public HTTPS URL for app webhooks and FilixPay notify callbacks
+```text
+Saleor Storefront
+        │
+        ▼
+Saleor Checkout
+        │
+        ▼
+FilixPay Saleor Integration
+        │
+        ▼
+FilixPay Payment Infrastructure
+        │
+        ├── Payment Routing
+        ├── Payment Runtime
+        └── Payment Providers
+```
 
-## Quick start (development)
+The integration connects Saleor Commerce with FilixPay while keeping payment execution and accounting responsibilities inside FilixPay.
+
+## Getting Started
+
+Install and configure the integration according to the [documentation](docs/integration-guide.md).
 
 ```bash
 cp .env.example .env
@@ -40,7 +57,47 @@ The app listens on [http://localhost:3000](http://localhost:3000) by default (Do
 
 Install the app from Saleor Dashboard → Apps, using your tunnel or public base URL.
 
-## Docker
+## Why FilixPay?
+
+FilixPay provides payment infrastructure for modern commerce applications, allowing commerce platforms such as Saleor to integrate with payment services without owning payment execution or accounting.
+
+## Part of FilixPay
+
+| Project | Role |
+|---------|------|
+| **[Merchant Portal](https://github.com/filixpay/filix-merchant)** | Merchant and commerce operations |
+| **[Checkout](https://github.com/filixpay/filix-checkout)** | Customer-facing payment checkout |
+| **[Saleor Integration](https://github.com/filixpay/filixpay-saleor)** | Payment integration for Saleor Commerce |
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| **[docs/integration-guide.md](docs/integration-guide.md)** | Deploy, Saleor install, FilixPay webhooks, reverse proxy, troubleshooting |
+| [docs/filixpay-order-integration.md](docs/filixpay-order-integration.md) | FilixPay API and implementation details (contributors) |
+| [docs/README.md](docs/README.md) | Documentation index |
+
+This repository is an open-source Saleor Payment App (Next.js). After you self-host it, the Payment App and FilixPay callbacks run on **your own domain/service**. Configure Saleor and FilixPay credentials via environment variables.
+
+本仓库是开源的 Saleor 支付应用（Next.js）。商户自行托管后，Payment App 与 FilixPay 回调运行在**您自己的域名/服务**上；通过环境变量配置 Saleor 与 FilixPay 凭证即可部署。
+
+### Integration capabilities
+
+- Saleor sync webhooks: `PAYMENT_GATEWAY_INITIALIZE_SESSION`, `TRANSACTION_INITIALIZE_SESSION`, `TRANSACTION_PROCESS_SESSION`
+- Charge / refund / cancel request webhooks
+- FilixPay OpenAPI: create order, payment token, HMAC-signed notify webhook
+- APL support: file / Upstash / Saleor Cloud
+
+### Prerequisites
+
+- Node.js 24–26 and [pnpm](https://pnpm.io/) 10+
+- A Saleor instance (3.22 schema)
+- FilixPay merchant credentials (`FILIXPAY_CLIENT_ID` / `FILIXPAY_CLIENT_SECRET`)
+- Public HTTPS URL for app webhooks and FilixPay notify callbacks
+
+### Docker
 
 ```bash
 cp .env.example .env
@@ -50,16 +107,11 @@ docker compose build
 docker compose up -d
 ```
 
-Production tip: see [docs/integration-guide.md](docs/integration-guide.md) for reverse proxy, Saleor install, and FilixPay webhook setup.
+See [docs/integration-guide.md](docs/integration-guide.md) for reverse proxy, Saleor install, and FilixPay webhook setup.
 
-## CI / production deploy (recommended)
+### CI / production deploy
 
 GitHub Actions builds and pushes the image to GHCR on every push to `main`.
-
-1. Repository **Settings → Actions → General → Workflow permissions** → **Read and write permissions**
-2. If package push fails, add a classic PAT with `write:packages` as secret **`GHCR_TOKEN`**
-
-On your server (public image — no GHCR login needed):
 
 ```bash
 cd ~/filixpay-saleor
@@ -67,10 +119,7 @@ git pull origin main
 ./scripts/deploy-pull.sh
 ```
 
-App runtime config stays in project `.env`. For private packages only, set
-`DEPLOY_ENV_FILE` with `GHCR_USER` / `GHCR_TOKEN` (`read:packages`).
-
-## Environment variables
+### Environment variables
 
 See [`.env.example`](.env.example). Required for FilixPay:
 
@@ -79,13 +128,11 @@ See [`.env.example`](.env.example). Required for FilixPay:
 | `FILIXPAY_API_BASE_URL` | FilixPay OpenAPI base |
 | `FILIXPAY_TOKEN_URL` | OAuth token endpoint |
 | `FILIXPAY_CLIENT_ID` / `FILIXPAY_CLIENT_SECRET` | Merchant API credentials |
-| `FILIXPAY_WEBHOOK_SECRET` | HMAC secret for notify verification (must match FilixPay Merchant Center) |
+| `FILIXPAY_WEBHOOK_SECRET` | HMAC secret for notify verification |
 
-Register the payment notify webhook in **FilixPay Merchant Center** (not `.env`):
+Register the payment notify webhook in **FilixPay Merchant Center**:
 
 `https://<your-domain>/api/webhooks/filixpay-notify`
-
-Optional: `APP_IFRAME_BASE_URL`, `APP_API_BASE_URL`, APL / DynamoDB settings.
 
 ## License
 
