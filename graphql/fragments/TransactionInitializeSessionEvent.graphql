@@ -31,10 +31,18 @@ fragment TransactionInitializeSessionEvent on TransactionInitializeSession {
       }
       lines {
         quantity
+        unitPrice {
+          gross {
+            amount
+          }
+        }
         variant {
           id
+          name
+          sku
           product {
             id
+            name
           }
         }
       }

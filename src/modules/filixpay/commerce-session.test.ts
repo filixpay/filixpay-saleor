@@ -43,10 +43,18 @@ describe("extractCommercePaymentSessionInput", () => {
         lines: [
           {
             quantity: 1,
+            unitPrice: {
+              gross: {
+                amount: 42.5,
+              },
+            },
             variant: {
               id: "UHJvZHVjdFZhcmlhbnQ6MQ==",
+              name: "Large",
+              sku: "TEE-LG",
               product: {
                 id: "UHJvZHVjdDox",
+                name: "Filix Tee",
               },
             },
           },
@@ -67,6 +75,9 @@ describe("extractCommercePaymentSessionInput", () => {
           saleorProductId: "UHJvZHVjdDox",
           saleorVariantId: "UHJvZHVjdFZhcmlhbnQ6MQ==",
           quantity: 1,
+          productName: "Filix Tee (Large)",
+          sku: "TEE-LG",
+          unitPrice: 42.5,
         },
       ],
     });
@@ -83,16 +94,30 @@ describe("extractCommercePaymentSessionInput", () => {
           lines: [
             {
               quantity: 1,
+              unitPrice: {
+                gross: {
+                  amount: 10,
+                },
+              },
               variant: {
                 id: "var-1",
-                product: { id: "prod-1" },
+                name: "A",
+                sku: "A-1",
+                product: { id: "prod-1", name: "Product A" },
               },
             },
             {
               quantity: 1,
+              unitPrice: {
+                gross: {
+                  amount: 20,
+                },
+              },
               variant: {
                 id: "var-2",
-                product: { id: "prod-2" },
+                name: "B",
+                sku: "B-1",
+                product: { id: "prod-2", name: "Product B" },
               },
             },
           ],

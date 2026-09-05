@@ -4,6 +4,9 @@ export type FilixPayCommercePaymentSessionLine = {
   saleorProductId: string;
   saleorVariantId: string;
   quantity: number;
+  productName: string;
+  sku?: string;
+  unitPrice: number;
 };
 
 export type FilixPayCommercePaymentSessionInput = {
@@ -47,6 +50,17 @@ function parseAmount(amount: unknown): number {
   throw new Error("FilixPay commerce checkout requires a numeric payment amount");
 }
 
+function buildProductName(productName: string, variantName?: string | null): string {
+  const product = productName.trim();
+  const variant = variantName?.trim();
+
+  if (!variant || variant === product) {
+    return product;
+  }
+
+  return `${product} (${variant})`;
+}
+
 function mapCheckoutLines(
   checkout: CheckoutSourceObject
 ): FilixPayCommercePaymentSessionLine[] {
@@ -55,10 +69,22 @@ function mapCheckoutLines(
   return lines.map((line, index) => {
     const saleorVariantId = line.variant?.id?.trim();
     const saleorProductId = line.variant?.product?.id?.trim();
+    const productNameRaw = line.variant?.product?.name?.trim();
+    const variantName = line.variant?.name;
+    const sku = line.variant?.sku?.trim() || undefined;
     const quantity = line.quantity;
+    const unitPrice = parseAmount(line.unitPrice?.gross?.amount);
 
     if (!saleorVariantId || !saleorProductId) {
       throw new Error(`Checkout line ${index + 1} is missing Saleor product or variant id`);
+    }
+
+    if (!productNameRaw) {
+      throw new Error(`Checkout line ${index + 1} is missing product name`);
+    }
+
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+      throw new Error(`Checkout line ${index + 1} is missing a valid unit price`);
     }
 
     if (!Number.isInteger(quantity) || quantity < 1) {
@@ -69,6 +95,9 @@ function mapCheckoutLines(
       saleorProductId,
       saleorVariantId,
       quantity,
+      productName: buildProductName(productNameRaw, variantName),
+      sku,
+      unitPrice,
     };
   });
 }
