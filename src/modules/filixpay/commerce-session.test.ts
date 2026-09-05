@@ -83,6 +83,36 @@ describe("extractCommercePaymentSessionInput", () => {
     });
   });
 
+  it("maps id-only checkout lines when name/sku/price are absent", () => {
+    const input = extractCommercePaymentSessionInput({
+      ...basePayload,
+      sourceObject: {
+        __typename: "Checkout",
+        token: "checkout-token-1",
+        email: "buyer@example.com",
+        lines: [
+          {
+            quantity: 1,
+            variant: {
+              id: "UHJvZHVjdFZhcmlhbnQ6MQ==",
+              product: {
+                id: "UHJvZHVjdDox",
+              },
+            },
+          },
+        ],
+      },
+    } as never);
+
+    expect(input?.lines).toEqual([
+      {
+        saleorProductId: "UHJvZHVjdDox",
+        saleorVariantId: "UHJvZHVjdFZhcmlhbnQ6MQ==",
+        quantity: 1,
+      },
+    ]);
+  });
+
   it("rejects multi-line checkouts for V1", () => {
     expect(() =>
       extractCommercePaymentSessionInput({

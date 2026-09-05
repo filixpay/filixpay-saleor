@@ -97,9 +97,6 @@ describe("FilixPay client", () => {
           saleorProductId: "prod-1",
           saleorVariantId: "var-1",
           quantity: 1,
-          productName: "Filix Tee (Large)",
-          sku: "TEE-LG",
-          unitPrice: 12,
         },
       ],
     });

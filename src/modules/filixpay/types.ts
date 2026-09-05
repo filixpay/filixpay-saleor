@@ -70,9 +70,6 @@ export type FilixPayCommercePaymentSessionPayload = {
     saleorProductId: string;
     saleorVariantId: string;
     quantity: number;
-    productName: string;
-    sku?: string;
-    unitPrice: number;
   }>;
 };
 

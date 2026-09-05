@@ -84,11 +84,15 @@ export default wrapWithLoggerContext(
             actionType === TransactionFlowStrategyEnum.Charge
               ? "CHARGE_FAILURE"
               : "AUTHORIZATION_FAILURE",
-          message: "Failed to initialize FilixPay transaction",
+          message:
+            err instanceof Error
+              ? `Failed to initialize FilixPay transaction: ${err.message}`
+              : "Failed to initialize FilixPay transaction",
           amount,
           actions: [],
           data: {
             exception: true,
+            errorMessage: err instanceof Error ? err.message : String(err),
           },
         };
 

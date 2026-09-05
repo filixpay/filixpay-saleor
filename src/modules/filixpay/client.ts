@@ -107,7 +107,13 @@ export function buildCommercePaymentSessionPayload(
       email: input.buyerEmail,
     },
     country: input.country,
-    lines: input.lines,
+    // Filix commerce V1 OpenAPI accepts only ids + quantity on lines.
+    // Extra denormalized fields can break strict deserializers and kill redirectUrl.
+    lines: input.lines.map((line) => ({
+      saleorProductId: line.saleorProductId,
+      saleorVariantId: line.saleorVariantId,
+      quantity: line.quantity,
+    })),
   };
 }
 
