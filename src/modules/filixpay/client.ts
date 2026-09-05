@@ -281,8 +281,47 @@ export async function createFilixPayCommercePaymentSession(
   });
   const responseBody = await readJsonResponse(response);
 
+  // #region agent log
+  fetch("http://127.0.0.1:7831/ingest/b078c2ef-9d88-4bed-aa48-04e9214be92e", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a3afbf" },
+    body: JSON.stringify({
+      sessionId: "a3afbf",
+      runId: "pre-fix",
+      hypothesisId: "C",
+      location: "client.ts:createFilixPayCommercePaymentSession",
+      message: "filix payment-sessions HTTP response",
+      data: {
+        httpOk: response.ok,
+        httpStatus: response.status,
+        success:
+          responseBody && typeof responseBody === "object"
+            ? (responseBody as { success?: unknown }).success
+            : null,
+        code:
+          responseBody && typeof responseBody === "object"
+            ? (responseBody as { code?: unknown }).code
+            : null,
+        message:
+          responseBody && typeof responseBody === "object"
+            ? String((responseBody as { message?: unknown }).message ?? "").slice(0, 200)
+            : null,
+        hasRedirectUrl: Boolean(
+          responseBody &&
+            typeof responseBody === "object" &&
+            (responseBody as { data?: { redirectUrl?: unknown } }).data?.redirectUrl
+        ),
+        lineCount: payload.lines.length,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+
   if (!response.ok) {
-    throw new Error(`FilixPay commerce payment-session failed with HTTP ${response.status}`);
+    throw new Error(
+      `FilixPay commerce payment-session failed with HTTP ${response.status}: ${JSON.stringify(responseBody).slice(0, 500)}`
+    );
   }
 
   const apiResponse = ensureApiSuccess(responseBody, "FilixPay commerce payment-session");
@@ -294,7 +333,7 @@ export async function createFilixPayCommercePaymentSession(
 
   if (!orderId || !merchantOrderId || !redirectUrl) {
     throw new Error(
-      "FilixPay commerce payment-session response is missing orderId, merchantOrderId, or redirectUrl"
+      `FilixPay commerce payment-session response is missing orderId, merchantOrderId, or redirectUrl: ${JSON.stringify(responseBody).slice(0, 500)}`
     );
   }
 

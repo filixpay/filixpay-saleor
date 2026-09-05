@@ -27,6 +27,53 @@ export const transactionInitializeSessionWebhook =
     query: TransactionInitializeSessionDocument,
   });
 
+// #region agent log
+function agentDebugLog(
+  hypothesisId: string,
+  location: string,
+  message: string,
+  data: Record<string, unknown>
+) {
+  const payload = {
+    sessionId: "a3afbf",
+    runId: "pre-fix",
+    hypothesisId,
+    location,
+    message,
+    data,
+    timestamp: Date.now(),
+  };
+  fetch("http://127.0.0.1:7831/ingest/b078c2ef-9d88-4bed-aa48-04e9214be92e", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "a3afbf",
+    },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const line = `${JSON.stringify(payload)}\n`;
+    for (const candidate of [
+      path.join(process.cwd(), "debug-a3afbf.log"),
+      path.join(process.cwd(), "..", "debug-a3afbf.log"),
+      "/data/debug-a3afbf.log",
+    ]) {
+      try {
+        fs.appendFileSync(candidate, line);
+        break;
+      } catch {
+        /* try next path */
+      }
+    }
+  } catch {
+    /* ignore file log failures */
+  }
+}
+// #endregion
+
 export default wrapWithLoggerContext(
   withOtel(
     transactionInitializeSessionWebhook.createHandler(async (req, res, ctx) => {
@@ -36,9 +83,38 @@ export default wrapWithLoggerContext(
       const { actionType, amount } = payload.action;
 
       logger.info("Received transaction initialize webhook", { payload });
+      // #region agent log
+      agentDebugLog("A", "transaction-initialize-session.ts:entry", "webhook received", {
+        actionType,
+        amount,
+        currency: payload.action.currency,
+        sourceTypename: payload.sourceObject?.__typename ?? null,
+        hasReturnUrl:
+          !!payload.data &&
+          typeof payload.data === "object" &&
+          typeof (payload.data as { returnUrl?: unknown }).returnUrl === "string",
+        checkoutEmail:
+          payload.sourceObject?.__typename === "Checkout"
+            ? Boolean(payload.sourceObject.email)
+            : false,
+        lineCount:
+          payload.sourceObject?.__typename === "Checkout"
+            ? (payload.sourceObject.lines?.length ?? 0)
+            : null,
+      });
+      // #endregion
 
       try {
         const commerceInput = extractCommercePaymentSessionInput(payload);
+        // #region agent log
+        agentDebugLog("B", "transaction-initialize-session.ts:extract", "commerce input extracted", {
+          ok: Boolean(commerceInput),
+          lineCount: commerceInput?.lines.length ?? null,
+          hasProductName: Boolean(commerceInput?.lines[0]?.productName),
+          hasUnitPrice: typeof commerceInput?.lines[0]?.unitPrice === "number",
+          amount: commerceInput?.amount ?? null,
+        });
+        // #endregion
         if (!commerceInput) {
           throw new Error(
             "FilixPay Saleor checkout requires Checkout sourceObject with product lines; legacy POST /orders is disabled"
@@ -46,6 +122,15 @@ export default wrapWithLoggerContext(
         }
 
         const checkout = await createFilixPayCommercePaymentSession(commerceInput);
+        // #region agent log
+        agentDebugLog("C", "transaction-initialize-session.ts:filix-ok", "filix session created", {
+          hasRedirectUrl: Boolean(checkout.redirectUrl),
+          redirectUrlLen: checkout.redirectUrl?.length ?? 0,
+          hasOrderId: Boolean(checkout.orderId),
+          hasMerchantOrderId: Boolean(checkout.merchantOrderId),
+          idempotencyReplay: checkout.idempotencyReplay,
+        });
+        // #endregion
 
         const successResponse: TransactionSessionSuccess = {
           pspReference: checkout.orderId,
@@ -67,6 +152,17 @@ export default wrapWithLoggerContext(
           response: successResponse,
           commerceCheckout: true,
         });
+        // #region agent log
+        agentDebugLog("E", "transaction-initialize-session.ts:success", "returning redirect to Saleor", {
+          result: successResponse.result,
+          dataHasRedirectUrl: Boolean(
+            successResponse.data &&
+              typeof successResponse.data === "object" &&
+              (successResponse.data as { redirectUrl?: unknown }).redirectUrl
+          ),
+          externalUrlPresent: Boolean(successResponse.externalUrl),
+        });
+        // #endregion
 
         return res.status(200).json(successResponse);
       } catch (err) {
@@ -77,6 +173,13 @@ export default wrapWithLoggerContext(
           responseData: (err as { response?: { data?: unknown; status?: number } })?.response?.data,
           responseStatus: (err as { response?: { status?: number } })?.response?.status,
         });
+        // #region agent log
+        agentDebugLog("B", "transaction-initialize-session.ts:catch", "initialize failed", {
+          errorName: err instanceof Error ? err.name : typeof err,
+          errorMessage: err instanceof Error ? err.message : String(err),
+          responseStatus: (err as { response?: { status?: number } })?.response?.status ?? null,
+        });
+        // #endregion
 
         const errorResponse: TransactionSessionFailure = {
           pspReference: uuidv7(),
