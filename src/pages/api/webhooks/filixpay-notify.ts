@@ -138,6 +138,27 @@ export default async function filixPayNotifyHandler(
     const signature = getSignatureHeader(req);
     const webhookSecret = process.env.FILIXPAY_WEBHOOK_SECRET;
 
+    // #region agent log
+    fetch("http://127.0.0.1:7831/ingest/b078c2ef-9d88-4bed-aa48-04e9214be92e", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a3afbf" },
+      body: JSON.stringify({
+        sessionId: "a3afbf",
+        runId: "post-pay-stuck",
+        hypothesisId: "H-notify",
+        location: "filixpay-notify.ts:entry",
+        message: "filixpay-notify received",
+        data: {
+          method: req.method,
+          hasSignature: Boolean(signature),
+          hasWebhookSecret: Boolean(webhookSecret),
+          bodyLen: rawBody.length,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+
     if (!webhookSecret) {
       logger.error("FILIXPAY_WEBHOOK_SECRET is not configured");
 
@@ -146,6 +167,21 @@ export default async function filixPayNotifyHandler(
 
     if (!signature || !verifyFilixPaySignature(rawBody, signature, webhookSecret)) {
       logger.warn("Invalid FilixPay webhook signature");
+      // #region agent log
+      fetch("http://127.0.0.1:7831/ingest/b078c2ef-9d88-4bed-aa48-04e9214be92e", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a3afbf" },
+        body: JSON.stringify({
+          sessionId: "a3afbf",
+          runId: "post-pay-stuck",
+          hypothesisId: "H-notify",
+          location: "filixpay-notify.ts:signature",
+          message: "signature rejected",
+          data: { hasSignature: Boolean(signature) },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
 
       return res.status(401).json({ success: false, message: "Invalid signature" });
     }
@@ -153,6 +189,28 @@ export default async function filixPayNotifyHandler(
     const notification = parseFilixPayNotification(rawBody);
     const eventType = mapFilixPayEventToSaleorEvent(notification);
     const references = [notification.data.tradeNo, notification.data.merchantOrderId];
+    // #region agent log
+    fetch("http://127.0.0.1:7831/ingest/b078c2ef-9d88-4bed-aa48-04e9214be92e", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a3afbf" },
+      body: JSON.stringify({
+        sessionId: "a3afbf",
+        runId: "post-pay-stuck",
+        hypothesisId: "H-notify",
+        location: "filixpay-notify.ts:parsed",
+        message: "notification parsed",
+        data: {
+          eventType: notification.eventType,
+          mappedSaleorEvent: eventType,
+          merchantOrderIdPrefix: notification.data.merchantOrderId?.slice(0, 14) ?? null,
+          tradeNoLen: notification.data.tradeNo?.length ?? 0,
+          amount: notification.data.amount,
+          currency: notification.data.currency,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     const saleorTransaction = await findSaleorTransaction(references);
 
     if (!saleorTransaction) {
@@ -160,6 +218,23 @@ export default async function filixPayNotifyHandler(
         eventId: notification.eventId,
         references,
       });
+      // #region agent log
+      fetch("http://127.0.0.1:7831/ingest/b078c2ef-9d88-4bed-aa48-04e9214be92e", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a3afbf" },
+        body: JSON.stringify({
+          sessionId: "a3afbf",
+          runId: "post-pay-stuck",
+          hypothesisId: "H-notify",
+          location: "filixpay-notify.ts:not-found",
+          message: "Saleor transaction not found",
+          data: {
+            merchantOrderIdPrefix: notification.data.merchantOrderId?.slice(0, 14) ?? null,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
 
       return res.status(404).json({ success: false, message: "Saleor transaction not found" });
     }
@@ -185,6 +260,25 @@ export default async function filixPayNotifyHandler(
       transactionId: saleorTransaction.transaction.id,
       alreadyProcessed: reportResult?.alreadyProcessed,
     });
+    // #region agent log
+    fetch("http://127.0.0.1:7831/ingest/b078c2ef-9d88-4bed-aa48-04e9214be92e", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a3afbf" },
+      body: JSON.stringify({
+        sessionId: "a3afbf",
+        runId: "post-pay-stuck",
+        hypothesisId: "H-notify",
+        location: "filixpay-notify.ts:success",
+        message: "notification processed",
+        data: {
+          mappedSaleorEvent: eventType,
+          alreadyProcessed: reportResult?.alreadyProcessed ?? null,
+          hasOrder: Boolean(saleorTransaction.transaction.order?.id),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
 
     return res.status(200).json({ success: true });
   } catch (err) {

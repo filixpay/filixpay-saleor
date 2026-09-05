@@ -169,9 +169,7 @@ export function extractCommercePaymentSessionInput(
     throw new Error("FilixPay commerce checkout V1 requires exactly one checkout line");
   }
 
-  if (lines[0].quantity !== 1) {
-    throw new Error("FilixPay commerce checkout V1 requires line quantity 1");
-  }
+  // V1: single line only; quantity may be > 1 (mapCheckoutLines already requires quantity >= 1).
 
   return {
     saleorCheckoutId,

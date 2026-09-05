@@ -271,6 +271,32 @@ export async function createFilixPayCommercePaymentSession(
   const config = getFilixPayConfig(env);
   const token = await getFilixPayAccessToken(env, fetchFn);
   const payload = buildCommercePaymentSessionPayload(input);
+  // #region agent log
+  fetch("http://127.0.0.1:7831/ingest/b078c2ef-9d88-4bed-aa48-04e9214be92e", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a3afbf" },
+    body: JSON.stringify({
+      sessionId: "a3afbf",
+      runId: "post-typename-fix",
+      hypothesisId: "F",
+      location: "client.ts:createFilixPayCommercePaymentSession:request",
+      message: "filix payment-sessions outbound payload shape",
+      data: {
+        amount: payload.amount,
+        currency: payload.currency,
+        country: payload.country ?? null,
+        hasReturnUrl: Boolean(payload.returnUrl),
+        checkoutIdLen: payload.saleorCheckoutId?.length ?? 0,
+        txTokenLen: payload.saleorTransactionToken?.length ?? 0,
+        lineCount: payload.lines.length,
+        saleorProductId: payload.lines[0]?.saleorProductId ?? null,
+        saleorVariantId: payload.lines[0]?.saleorVariantId ?? null,
+        quantity: payload.lines[0]?.quantity ?? null,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
   const response = await fetchFn(joinUrl(config.apiBaseUrl, "/commerce/saleor/payment-sessions"), {
     method: "POST",
     headers: {
@@ -287,8 +313,8 @@ export async function createFilixPayCommercePaymentSession(
     headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a3afbf" },
     body: JSON.stringify({
       sessionId: "a3afbf",
-      runId: "pre-fix",
-      hypothesisId: "C",
+      runId: "post-typename-fix",
+      hypothesisId: "F",
       location: "client.ts:createFilixPayCommercePaymentSession",
       message: "filix payment-sessions HTTP response",
       data: {
@@ -312,6 +338,8 @@ export async function createFilixPayCommercePaymentSession(
             (responseBody as { data?: { redirectUrl?: unknown } }).data?.redirectUrl
         ),
         lineCount: payload.lines.length,
+        saleorProductId: payload.lines[0]?.saleorProductId ?? null,
+        saleorVariantId: payload.lines[0]?.saleorVariantId ?? null,
       },
       timestamp: Date.now(),
     }),
