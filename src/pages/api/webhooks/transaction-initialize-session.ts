@@ -88,17 +88,24 @@ export default wrapWithLoggerContext(
         amount,
         currency: payload.action.currency,
         sourceTypename: payload.sourceObject?.__typename ?? null,
+        sourceKeys: payload.sourceObject ? Object.keys(payload.sourceObject) : [],
+        hasToken:
+          !!payload.sourceObject &&
+          "token" in payload.sourceObject &&
+          typeof (payload.sourceObject as { token?: unknown }).token === "string",
         hasReturnUrl:
           !!payload.data &&
           typeof payload.data === "object" &&
           typeof (payload.data as { returnUrl?: unknown }).returnUrl === "string",
         checkoutEmail:
-          payload.sourceObject?.__typename === "Checkout"
-            ? Boolean(payload.sourceObject.email)
-            : false,
+          !!payload.sourceObject &&
+          "email" in payload.sourceObject &&
+          Boolean((payload.sourceObject as { email?: unknown }).email),
         lineCount:
-          payload.sourceObject?.__typename === "Checkout"
-            ? (payload.sourceObject.lines?.length ?? 0)
+          !!payload.sourceObject &&
+          "lines" in payload.sourceObject &&
+          Array.isArray((payload.sourceObject as { lines?: unknown }).lines)
+            ? (payload.sourceObject as { lines: unknown[] }).lines.length
             : null,
       });
       // #endregion

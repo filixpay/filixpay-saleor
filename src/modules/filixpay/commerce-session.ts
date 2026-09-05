@@ -109,6 +109,27 @@ function mapCheckoutLines(
   });
 }
 
+function isCheckoutSourceObject(
+  sourceObject: NonNullable<TransactionInitializeSessionEventFragment["sourceObject"]>
+): sourceObject is CheckoutSourceObject {
+  if (sourceObject.__typename === "Checkout") {
+    return true;
+  }
+
+  // Saleor sync webhooks often omit __typename unless the subscription selects it.
+  // Detect Checkout by shape (token + lines); Order payloads lack checkout token.
+  if (sourceObject.__typename == null) {
+    return (
+      "token" in sourceObject &&
+      typeof (sourceObject as { token?: unknown }).token === "string" &&
+      "lines" in sourceObject &&
+      Array.isArray((sourceObject as { lines?: unknown }).lines)
+    );
+  }
+
+  return false;
+}
+
 /**
  * Maps Saleor TRANSACTION_INITIALIZE_SESSION payload to FilixPay commerce checkout input.
  * Returns null when sourceObject is not a Checkout — callers must fail closed (no legacy /orders).
@@ -117,7 +138,7 @@ export function extractCommercePaymentSessionInput(
   payload: TransactionInitializeSessionEventFragment
 ): FilixPayCommercePaymentSessionInput | null {
   const sourceObject = payload.sourceObject;
-  if (!sourceObject || sourceObject.__typename !== "Checkout") {
+  if (!sourceObject || !isCheckoutSourceObject(sourceObject)) {
     return null;
   }
 

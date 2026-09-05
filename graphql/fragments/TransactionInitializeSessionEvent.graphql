@@ -21,6 +21,7 @@ fragment TransactionInitializeSessionEvent on TransactionInitializeSession {
     ...SyncWebhookTransaction
   }
   sourceObject {
+    __typename
     ... on Checkout {
       token
       email
