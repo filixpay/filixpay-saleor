@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { createFilixPayCommercePaymentSession } from "@/modules/filixpay/client";
 import { extractCommercePaymentSessionInput } from "@/modules/filixpay/commerce-session";
 
@@ -52,9 +54,6 @@ function agentDebugLog(
     body: JSON.stringify(payload),
   }).catch(() => {});
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const fs = require("node:fs") as typeof import("node:fs");
-    const path = require("node:path") as typeof import("node:path");
     const line = `${JSON.stringify(payload)}\n`;
     for (const candidate of [
       path.join(process.cwd(), "debug-a3afbf.log"),
