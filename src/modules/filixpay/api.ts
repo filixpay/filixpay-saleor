@@ -32,3 +32,14 @@ export type {
   FilixPayCommercePaymentSessionLine,
 } from "./commerce-session";
 export type { SaleorMetadataPatchTarget } from "./saleor-metadata-patch";
+export { normalizeFilixOrderId, parseTransactionToken } from "./order-id";
+export { pushCompletePaidCheckout, isCheckoutPaidForCompletion, mapCheckoutCompleteErrorCode } from "./push-complete";
+export { createPushCompleteDeps, fetchFilixPaidOrderForSync } from "./push-complete-deps";
+export type {
+  PushCompleteDeps,
+  PushCompleteErrorCode,
+  PushCompleteResult,
+  PushCompleteStatus,
+  PushCompleteTransactionSnapshot,
+} from "./push-complete.types";
+export { reportSaleorTransactionEvent } from "./saleor-transaction-report";

@@ -2,6 +2,7 @@ mutation CompleteCheckout($id: ID!) {
   checkoutComplete(id: $id) {
     errors {
       field
+      code
       message
     }
     order {

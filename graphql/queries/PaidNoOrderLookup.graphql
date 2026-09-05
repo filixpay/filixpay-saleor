@@ -1,0 +1,31 @@
+query PaidNoOrderLookup($token: UUID!) {
+  transaction(token: $token) {
+    id
+    token
+    pspReference
+    chargedAmount {
+      amount
+      currency
+    }
+    authorizedAmount {
+      amount
+      currency
+    }
+    checkout {
+      id
+      token
+      chargeStatus
+      authorizeStatus
+      totalPrice {
+        gross {
+          amount
+          currency
+        }
+      }
+    }
+    order {
+      id
+      number
+    }
+  }
+}
