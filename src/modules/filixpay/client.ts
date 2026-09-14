@@ -365,15 +365,17 @@ export async function createFilixPayCommercePaymentSession(
     );
   }
 
+  const idempotencyReplay =
+    typeof data === "object" &&
+    data !== null &&
+    (data as Record<string, unknown>).idempotencyReplay === true;
+
   return {
     orderId,
     merchantOrderId,
     redirectUrl,
     expiresAt: stringField(data, "expiresAt"),
-    idempotencyReplay:
-      typeof data === "object" &&
-      data !== null &&
-      (data as Record<string, unknown>).idempotencyReplay === true,
+    idempotencyReplay,
   };
 }
 
