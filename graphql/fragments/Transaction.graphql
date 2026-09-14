@@ -41,5 +41,21 @@ fragment Transaction on TransactionItem {
   order {
     id
     number
+    user {
+      id
+    }
+    lines {
+      id
+      metadata {
+        key
+        value
+      }
+      variant {
+        sku
+      }
+    }
+  }
+  checkout {
+    id
   }
 }
