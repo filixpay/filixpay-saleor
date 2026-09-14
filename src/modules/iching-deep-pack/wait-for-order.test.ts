@@ -38,7 +38,7 @@ describe("waitForSaleorOrder", () => {
     expect(sleep).toHaveBeenCalledWith(2000);
   });
 
-  it("returns null after exhausting attempts", async () => {
+  it("returns last snapshot with null order after exhausting attempts", async () => {
     const fetchOrder = vi.fn().mockResolvedValue({ order: null, checkoutId: "chk_1" });
     const sleep = vi.fn().mockResolvedValue(undefined);
 
@@ -49,7 +49,7 @@ describe("waitForSaleorOrder", () => {
       baseDelayMs: 10,
     });
 
-    expect(result).toBeNull();
+    expect(result).toEqual({ order: null, checkoutId: "chk_1" });
     expect(fetchOrder).toHaveBeenCalledTimes(3);
     expect(sleep).toHaveBeenCalledTimes(2);
     expect(sleep).toHaveBeenNthCalledWith(1, 10);

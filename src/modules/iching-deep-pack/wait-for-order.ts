@@ -29,10 +29,12 @@ export async function waitForSaleorOrder(params: {
     params.sleep ??
     ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
 
+  let lastSnapshot: FetchOrderSnapshot | null = null;
+
   for (let attempt = 1; attempt <= params.attempts; attempt += 1) {
-    const snapshot = await params.fetchOrder();
-    if (snapshot.order) {
-      return snapshot;
+    lastSnapshot = await params.fetchOrder();
+    if (lastSnapshot.order) {
+      return lastSnapshot;
     }
     if (attempt < params.attempts) {
       const delay = params.baseDelayMs * 2 ** (attempt - 1);
@@ -40,5 +42,6 @@ export async function waitForSaleorOrder(params: {
     }
   }
 
-  return null;
+  // Preserve checkoutId (and other log fields) when Order never appeared.
+  return lastSnapshot;
 }
