@@ -17,6 +17,8 @@ import {
   verifyFilixPaySignature,
   getTransactionTokenFromMerchantOrderId,
 } from "@/modules/filixpay/notify";
+import { createFetchTransactionOrderSnapshot } from "@/modules/iching-deep-pack/fetch-transaction-order";
+import { tryDeepPackGrantAfterChargeSuccess } from "@/modules/iching-deep-pack/orchestrate";
 
 async function readRawBody(req: NextApiRequest) {
   const chunks: Buffer[] = [];
@@ -249,7 +251,30 @@ export default async function filixPayNotifyHandler(
     });
 
     if (eventType === TransactionEventTypeEnum.ChargeSuccess) {
-      await patchFilixPayOrderSaleorMetadata(saleorTransaction.transaction, logger);
+      // Best-effort side effects must not delay Notify 200 (FilixPay settlement ack).
+      void patchFilixPayOrderSaleorMetadata(saleorTransaction.transaction, logger).catch((err) => {
+        logger.error("Failed to patch FilixPay saleor-metadata (non-fatal)", {
+          errorName: err instanceof Error ? err.name : undefined,
+          errorMessage: err instanceof Error ? err.message : String(err),
+        });
+      });
+
+      void tryDeepPackGrantAfterChargeSuccess({
+        tradeNo: notification.data.tradeNo,
+        merchantOrderId: notification.data.merchantOrderId,
+        logger,
+        fetchOrder: createFetchTransactionOrderSnapshot(
+          saleorTransaction.authData,
+          saleorTransaction.transaction.id
+        ),
+      }).catch((err) => {
+        logger.error("Deep Pack orchestration unexpected error (non-fatal)", {
+          paymentEventId: notification.data.tradeNo,
+          merchantOrderId: notification.data.merchantOrderId,
+          errorName: err instanceof Error ? err.name : undefined,
+          errorMessage: err instanceof Error ? err.message : String(err),
+        });
+      });
     }
 
     logger.info("Processed FilixPay notification", {
