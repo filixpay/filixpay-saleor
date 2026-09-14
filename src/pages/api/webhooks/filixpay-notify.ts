@@ -1,13 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { saleorApp } from "@/saleor-app";
-import { createClient } from "@/lib/create-graphql-client";
 import { createLogger } from "@/lib/logger/create-logger";
 import { patchFilixPaySaleorOrderMetadata } from "@/modules/filixpay/client";
+import { findSaleorTransaction } from "@/modules/filixpay/find-saleor-transaction";
 import { resolveSaleorMetadataPatchTarget } from "@/modules/filixpay/saleor-metadata-patch";
 import { reportSaleorTransactionEvent } from "@/modules/filixpay/saleor-transaction-report";
 import {
-  TransactionDetailsViaPspDocument,
-  TransactionDetailsViaTokenDocument,
   TransactionEventTypeEnum,
   TransactionFragment,
 } from "@/generated/graphql";
@@ -15,7 +12,6 @@ import {
   mapFilixPayEventToSaleorEvent,
   parseFilixPayNotification,
   verifyFilixPaySignature,
-  getTransactionTokenFromMerchantOrderId,
 } from "@/modules/filixpay/notify";
 import { createFetchTransactionOrderSnapshot } from "@/modules/iching-deep-pack/fetch-transaction-order";
 import { tryDeepPackGrantAfterChargeSuccess } from "@/modules/iching-deep-pack/orchestrate";
@@ -34,61 +30,6 @@ function getSignatureHeader(req: NextApiRequest) {
   const header = req.headers["x-filixpay-signature"];
 
   return Array.isArray(header) ? header[0] : header;
-}
-
-function transactionMatchesReference(transaction: TransactionFragment, references: string[]) {
-  return (
-    references.includes(transaction.pspReference) ||
-    transaction.events.some((event) => references.includes(event.pspReference))
-  );
-}
-
-async function findSaleorTransaction(references: string[]) {
-  const authEntries = await saleorApp.apl.getAll();
-  const merchantOrderId = references.find((reference) => reference.startsWith("SALEOR-"));
-  const transactionToken = merchantOrderId
-    ? getTransactionTokenFromMerchantOrderId(merchantOrderId)
-    : null;
-
-  for (const authData of authEntries) {
-    const client = createClient(authData.saleorApiUrl, async () =>
-      Promise.resolve({ token: authData.token })
-    );
-
-    if (transactionToken) {
-      const result = await client.query(TransactionDetailsViaTokenDocument, {
-        token: transactionToken,
-      });
-
-      if (result.error) {
-        throw result.error;
-      }
-
-      if (result.data?.transaction) {
-        return { authData, transaction: result.data.transaction };
-      }
-    }
-
-    for (const reference of references) {
-      const result = await client.query(TransactionDetailsViaPspDocument, {
-        pspReference: reference,
-      });
-
-      if (result.error) {
-        throw result.error;
-      }
-
-      const transaction = result.data?.orders?.edges
-        .flatMap((edge) => edge.node.transactions)
-        .find((candidate) => transactionMatchesReference(candidate, references));
-
-      if (transaction) {
-        return { authData, transaction };
-      }
-    }
-  }
-
-  return null;
 }
 
 /**
