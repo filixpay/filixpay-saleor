@@ -14,8 +14,11 @@ Saleor does **not** use traditional “payment plugins.” Payments run through:
 |-------|------|
 | **Saleor** | Checkout, orders, transaction state (source of truth) |
 | **Storefront** | Calls `transactionInitialize`, redirects shopper to FilixPay |
-| **filixpay-saleor** (this repo) | Saleor webhooks, FilixPay API, payment notify → Saleor `transactionEventReport` |
+| **filixpay-saleor** (this repo) | Saleor webhooks, FilixPay API, payment notify → Saleor `transactionEventReport` + **(conditional)** CMS Deep Pack grant orchestration |
 | **FilixPay** | Hosted checkout, card/wallet capture, `PAYMENT_SUCCESS` notify |
+
+> **FilixPay = payment + Notify delivery; Payment App = Saleor settlement + (conditional) CMS Deep Pack grant orchestration.**
+> Deep Pack grant is platform-specific (micselect CMS ingress). It does not belong in FilixPay payment core or in arbitrary merchant Notify consumers.
 
 ### App identity
 
@@ -41,8 +44,22 @@ Shopper → Storefront checkout
 FilixPay PAYMENT_SUCCESS
   → POST <app>/api/webhooks/filixpay-notify (HMAC signed)
   → App finds Saleor transaction → transactionEventReport(CHARGE_SUCCESS)
-  → Storefront completes checkout → order created
+  → HTTP 200 to FilixPay (settlement complete)
+  → (best-effort) short-window Order poll → CMS ingress/confirmed when ICHING-DEEP-199 + OrderLine.metadata.readingId
+  → Storefront completes checkout → order created (may race with short window; use ops replay if miss)
 ```
+
+### Deep Pack ops replay
+
+When Notify settled Saleor but CMS grant missed the short window (Order not ready yet):
+
+```text
+POST /api/ops/iching-deep-pack-replay
+Header: x-iching-deep-pack-replay-secret: <ICHING_DEEP_PACK_REPLAY_SECRET or ICHING_ENTITLEMENT_INGRESS_SECRET>
+Body: { "tradeNo": "<FilixPay tradeNo>", "merchantOrderId": "SALEOR-<transaction-token>" }
+```
+
+Requires Order to already exist. Design: [superpowers/specs/2026-09-14-iching-deep-pack-notify-grant-design.md](./superpowers/specs/2026-09-14-iching-deep-pack-notify-grant-design.md).
 
 ### Order ID mapping
 
@@ -83,6 +100,10 @@ FILIXPAY_CLIENT_SECRET=your-client-secret
 
 # Must match FilixPay Merchant Center webhook secret exactly
 FILIXPAY_WEBHOOK_SECRET=your-webhook-secret
+
+# Optional: platform Deep Pack grant → micselect CMS (see .env.example)
+# MICSELECT_CMS_BASE_URL=https://cms.example.com
+# ICHING_ENTITLEMENT_INGRESS_SECRET=shared-with-cms
 
 # Single-server Docker: persist app token after Dashboard install
 APL=file
