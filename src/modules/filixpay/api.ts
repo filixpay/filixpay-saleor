@@ -42,4 +42,11 @@ export type {
   PushCompleteStatus,
   PushCompleteTransactionSnapshot,
 } from "./push-complete.types";
+export { syncPaidFilixOrderToSaleor } from "./sync-payment";
+export { createSyncPaymentDeps } from "./sync-payment-deps";
+export type {
+  SyncPaymentDeps,
+  SyncPaymentResult,
+  SyncPaymentStatus,
+} from "./sync-payment.types";
 export { reportSaleorTransactionEvent } from "./saleor-transaction-report";
